@@ -3,15 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard de Calidad Organoléptica - Recepción de Camarón</title>
-  <!-- Tailwind CSS -->
+  <title>Dashboard Integral de Calidad - Recepción de Camarón</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- PapaParse (Ideal para leer CSV remotamente desde GitHub Pages) -->
+  <!-- PapaParse para lectura automática desde GitHub Pages -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <!-- SheetJS (Mantenido para carga manual opcional) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f1f5f9; }
     .tab-active { border-bottom: 3px solid #2563eb; color: #1d4ed8; font-weight: 700; background-color: #eff6ff; }
@@ -19,220 +15,128 @@
     .badge-cola { background-color: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
     .badge-cuerpo { background-color: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
     .badge-sano { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-sabor-ok { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-sabor-fuerte { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .badge-sabor-leve { background-color: #fef08a; color: #854d0e; border: 1px solid #fde047; }
   </style>
 </head>
 <body class="text-slate-800">
 
-  <!-- HEADER SUPERIOR -->
+  <!-- HEADER -->
   <header class="bg-slate-900 text-white shadow-lg border-b border-slate-700">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="max-w-[1400px] mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
         <div class="flex items-center gap-2">
-          <span class="bg-blue-600 text-xs font-bold uppercase px-2.5 py-1 rounded">Control de Calidad</span>
-          <span class="text-slate-400 text-xs" id="statusCarga">Cargando datos desde CSV...</span>
+          <span class="bg-blue-600 text-xs font-bold uppercase px-2.5 py-1 rounded">QC Analyst</span>
+          <span class="text-slate-400 text-xs" id="statusCarga">Cargando base de 314 columnas...</span>
         </div>
-        <h1 class="text-xl md:text-2xl font-bold mt-1">Dashboard Consolidado de Análisis Organoléptico</h1>
+        <h1 class="text-xl md:text-2xl font-bold mt-1">Control de Calidad: Físico y Análisis Sensorial</h1>
       </div>
       
       <div class="flex flex-wrap items-center gap-3">
-        <label class="flex items-center gap-2 bg-slate-800 px-3 py-2 rounded-lg border border-slate-700 text-xs cursor-pointer hover:bg-slate-700 transition">
-          <input type="checkbox" id="chkDeduplicar" checked class="rounded text-blue-500 focus:ring-0" onchange="applyFilters()">
-          <span>Omitir Lotes Duplicados</span>
+        <label class="flex items-center gap-2 bg-slate-800 px-3 py-2 rounded-lg border border-slate-700 text-xs cursor-pointer">
+          <input type="checkbox" id="chkDeduplicar" checked class="rounded" onchange="applyFilters()">
+          <span>Deduplicar Lotes</span>
         </label>
-        <!-- Carga Manual como Backup -->
-        <label class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow cursor-pointer transition flex items-center gap-2 border border-slate-600">
+        <label class="bg-slate-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg cursor-pointer flex items-center gap-2">
           <span>🔄 Carga Manual (Backup)</span>
-          <input type="file" id="excelUpload" accept=".csv,.xlsx,.xls" class="hidden" onchange="handleManualUpload(event)">
+          <input type="file" accept=".csv" class="hidden" onchange="handleManualUpload(event)">
         </label>
       </div>
     </div>
   </header>
 
-  <!-- BARRA GLOBAL DE FILTROS -->
+  <!-- FILTROS GLOBALES -->
   <section class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-20">
-    <div class="max-w-7xl mx-auto px-4 py-3 grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
-      <div>
-        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Camaronera / Origen</label>
-        <select id="fCamaronera" onchange="applyFilters()" class="w-full border border-slate-300 rounded-md px-2.5 py-1.5 text-sm bg-slate-50">
-          <option value="ALL">Todas</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Lote</label>
-        <select id="fLote" onchange="applyFilters()" class="w-full border border-slate-300 rounded-md px-2.5 py-1.5 text-sm bg-slate-50">
-          <option value="ALL">Todos</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Zona Anatómica</label>
-        <select id="fZona" onchange="applyFilters()" class="w-full border border-blue-400 rounded-md px-2.5 py-1.5 text-sm bg-blue-50 font-medium text-blue-900">
-          <option value="ALL">Todas las Zonas</option>
-          <option value="Cabeza (Cefalotórax)">🦐 Cabeza (Cefalotórax)</option>
-          <option value="Cola (Abdomen)">🍤 Cola (Abdomen)</option>
-          <option value="Todo el Cuerpo (General)">🔄 Todo el Cuerpo (General)</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Muestra</label>
-        <select id="fMuestra" onchange="applyFilters()" class="w-full border border-slate-300 rounded-md px-2.5 py-1.5 text-sm bg-slate-50">
-          <option value="ALL">Consolidado (1°+2°+3°)</option>
-          <option value="1">1° Muestra</option>
-          <option value="2">2° Muestra</option>
-          <option value="3">3° Muestra</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Fecha Recepción</label>
-        <select id="fFecha" onchange="applyFilters()" class="w-full border border-slate-300 rounded-md px-2.5 py-1.5 text-sm bg-slate-50">
-          <option value="ALL">Todas</option>
-        </select>
-      </div>
-      <div>
-        <button onclick="resetFilters()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-1.5 px-3 rounded-md text-sm transition">
-          Limpiar Filtros
-        </button>
-      </div>
+    <div class="max-w-[1400px] mx-auto px-4 py-3 grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Camaronera</label><select id="fCamaronera" onchange="applyFilters()" class="w-full border rounded-md px-2 py-1.5 text-sm"><option value="ALL">Todas</option></select></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Lote</label><select id="fLote" onchange="applyFilters()" class="w-full border rounded-md px-2 py-1.5 text-sm"><option value="ALL">Todos</option></select></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Tipo Prod.</label><select id="fTipo" onchange="applyFilters()" class="w-full border rounded-md px-2 py-1.5 text-sm"><option value="ALL">Entero y Cola</option></select></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Muestra Física</label><select id="fMuestra" onchange="applyFilters()" class="w-full border rounded-md px-2 py-1.5 text-sm"><option value="ALL">Consolidado (1° a 6°)</option><option value="1">1° Muestra</option><option value="2">2° Muestra</option><option value="3">3° Muestra</option><option value="4">4° Muestra</option><option value="5">5° Muestra</option><option value="6">6° Muestra</option></select></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Fecha</label><select id="fFecha" onchange="applyFilters()" class="w-full border rounded-md px-2 py-1.5 text-sm"><option value="ALL">Todas</option></select></div>
+      <div><button onclick="resetFilters()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-1.5 px-3 rounded-md text-sm">Limpiar</button></div>
     </div>
   </section>
 
-  <!-- CONTENEDOR PRINCIPAL -->
-  <main class="max-w-7xl mx-auto px-4 py-5" id="mainContent" style="display: none;">
-    <!-- TARJETAS KPI GLOBALES -->
+  <main class="max-w-[1400px] mx-auto px-4 py-5" id="mainContent" style="display: none;">
+    
+    <!-- KPIs -->
     <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-xs text-slate-500 font-semibold uppercase">Unidades Evaluadas</p>
-        <p id="kpiTotalUnid" class="text-2xl font-extrabold text-slate-800 mt-1">0</p>
-        <p id="kpiTotalLotes" class="text-xs text-slate-500 mt-1">en 0 lotes</p>
-      </div>
-      <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
-        <p class="text-xs text-green-700 font-semibold uppercase">% Fresco y Sano</p>
-        <p id="kpiPctSano" class="text-2xl font-extrabold text-green-600 mt-1">0%</p>
-        <p id="kpiUnidSano" class="text-xs text-slate-500 mt-1">0 unidades conformes</p>
-      </div>
-      <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-orange-500">
-        <p class="text-xs text-orange-700 font-semibold uppercase">Defectos Cabeza</p>
-        <p id="kpiPctCabeza" class="text-2xl font-extrabold text-orange-600 mt-1">0%</p>
-        <p id="kpiUnidCabeza" class="text-xs text-slate-500 mt-1">0 unid (Cefalotórax)</p>
-      </div>
-      <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-teal-500">
-        <p class="text-xs text-teal-700 font-semibold uppercase">Defectos Cola</p>
-        <p id="kpiPctCola" class="text-2xl font-extrabold text-teal-600 mt-1">0%</p>
-        <p id="kpiUnidCola" class="text-xs text-slate-500 mt-1">0 unid (Abdomen)</p>
-      </div>
-      <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-600">
-        <p class="text-xs text-blue-700 font-semibold uppercase">Todo el Cuerpo</p>
-        <p id="kpiPctCuerpo" class="text-2xl font-extrabold text-blue-600 mt-1">0%</p>
-        <p id="kpiUnidCuerpo" class="text-xs text-slate-500 mt-1">0 unid (Sistémico)</p>
-      </div>
-      <div id="cardTemp" class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500">
-        <p class="text-xs text-slate-500 font-semibold uppercase">Temperatura Recepción</p>
-        <p id="kpiTemp" class="text-2xl font-extrabold text-slate-800 mt-1">0 °C</p>
-        <p id="kpiTempAlert" class="text-xs font-semibold text-red-600 mt-1">Máx: 0 °C</p>
-      </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200"><p class="text-[10px] text-slate-500 font-bold uppercase">Lotes Analizados</p><p id="kpiLotes" class="text-2xl font-extrabold mt-1">0</p><p id="kpiUnid" class="text-[10px] text-slate-500 mt-1">0 unidades físicas</p></div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500"><p class="text-[10px] text-green-700 font-bold uppercase">% Físico Conforme</p><p id="kpiPctSano" class="text-2xl font-extrabold text-green-600 mt-1">0%</p><p class="text-[10px] text-slate-500 mt-1">Fresco y Sano</p></div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-orange-500"><p class="text-[10px] text-orange-700 font-bold uppercase">Defectos Cabeza</p><p id="kpiPctCabeza" class="text-2xl font-extrabold text-orange-600 mt-1">0%</p></div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-teal-500"><p class="text-[10px] text-teal-700 font-bold uppercase">Defectos Cola</p><p id="kpiPctCola" class="text-2xl font-extrabold text-teal-600 mt-1">0%</p></div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-600 bg-red-50"><p class="text-[10px] text-red-700 font-bold uppercase">Tasa Sabores Atípicos</p><p id="kpiSabores" class="text-2xl font-extrabold text-red-600 mt-1">0%</p><p class="text-[10px] text-red-500 mt-1">Lotes con rechazo/observ.</p></div>
+      <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500"><p class="text-[10px] text-slate-500 font-bold uppercase">Temp. Máxima</p><p id="kpiTemp" class="text-2xl font-extrabold text-slate-800 mt-1">0 °C</p><p id="kpiTempAlert" class="text-[10px] font-bold mt-1">...</p></div>
     </div>
 
-    <!-- NAVEGACIÓN POR PESTAÑAS -->
+    <!-- TABS -->
     <div class="bg-white rounded-t-xl border border-b-0 border-slate-200 flex overflow-x-auto">
-      <button onclick="switchTab('tab1')" id="btn-tab1" class="px-5 py-3 text-sm font-medium tab-active whitespace-nowrap">📊 1. Resumen de Lotes</button>
+      <button onclick="switchTab('tab1')" id="btn-tab1" class="px-5 py-3 text-sm font-medium tab-active whitespace-nowrap">📊 1. Resumen Físico</button>
       <button onclick="switchTab('tab2')" id="btn-tab2" class="px-5 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">🦐 2. Pareto Anatómico</button>
-      <button onclick="switchTab('tab3')" id="btn-tab3" class="px-5 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">🔬 3. Muestras y Frío</button>
-      <button onclick="switchTab('tab4')" id="btn-tab4" class="px-5 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">📋 4. Datos Crudos</button>
+      <button onclick="switchTab('tab3')" id="btn-tab3" class="px-5 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">🔬 3. Variabilidad (1° a 6°)</button>
+      <button onclick="switchTab('tab4')" id="btn-tab4" class="px-5 py-3 text-sm font-medium text-purple-700 bg-purple-50 hover:text-purple-900 whitespace-nowrap font-bold border-r">👅 4. Análisis Sensorial (Sabores)</button>
+      <button onclick="switchTab('tab5')" id="btn-tab5" class="px-5 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">📋 5. Datos Normalizados</button>
     </div>
 
-    <!-- PESTAÑA 1 -->
+    <!-- TAB 1: RESUMEN FÍSICO -->
     <div id="tab1" class="bg-white p-5 rounded-b-xl shadow-sm border border-slate-200 space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <h3 class="text-sm font-bold text-slate-800 mb-1">Composición de Calidad por Lote</h3>
-          <div class="h-72"><canvas id="chartLoteStack"></canvas></div>
+        <div class="lg:col-span-2 bg-slate-50 p-4 rounded-xl border"><h3 class="text-sm font-bold mb-2">Composición de Calidad Físico por Lote</h3><div class="h-72"><canvas id="chartLoteStack"></canvas></div></div>
+        <div class="bg-slate-50 p-4 rounded-xl border"><h3 class="text-sm font-bold mb-2">Distribución Global</h3><div class="h-72"><canvas id="chartZonaDona"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: PARETO -->
+    <div id="tab2" class="bg-white p-5 rounded-b-xl shadow-sm border space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-slate-50 p-4 rounded-xl border"><h3 class="text-sm font-bold mb-2">Pareto de Defectos Físicos</h3><div class="h-80"><canvas id="chartPareto"></canvas></div></div>
+        <div class="bg-slate-50 p-4 rounded-xl border overflow-y-auto max-h-96">
+          <table class="w-full text-xs text-left"><thead class="bg-slate-100 sticky top-0"><tr><th class="p-1.5">Defecto</th><th class="p-1.5 text-right">Unid</th></tr></thead><tbody id="tbodyParetoList" class="divide-y divide-slate-200"></tbody></table>
         </div>
-        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <h3 class="text-sm font-bold text-slate-800 mb-1">Defectos por Zona Anatómica</h3>
-          <div class="h-72"><canvas id="chartZonaDona"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: VARIABILIDAD -->
+    <div id="tab3" class="bg-white p-5 rounded-b-xl shadow-sm border hidden">
+      <div class="bg-slate-50 p-4 rounded-xl border mb-6"><h3 class="text-sm font-bold mb-2">% Fresco y Sano por Muestras (1° a 6°)</h3><div class="h-72"><canvas id="chartMuestras"></canvas></div></div>
+    </div>
+
+    <!-- TAB 4: SENSORIAL Y SABORES (NUEVO) -->
+    <div id="tab4" class="bg-white p-5 rounded-b-xl shadow-sm border border-purple-200 space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-purple-50 p-4 rounded-xl border border-purple-200">
+          <h3 class="text-sm font-bold text-purple-900 mb-1">Impacto de Sabores Atípicos por Fracción</h3>
+          <p class="text-xs text-purple-700 mb-2">Distribución de unidades detectadas con Tierra, Mangle, Choclo u Otros</p>
+          <div class="h-72"><canvas id="chartSaboresBar"></canvas></div>
+        </div>
+        <div class="bg-purple-50 p-4 rounded-xl border border-purple-200">
+          <h3 class="text-sm font-bold text-purple-900 mb-1">Severidad del Atípico (Intensidad)</h3>
+          <p class="text-xs text-purple-700 mb-2">Unidades clasificadas como Fuerte vs Leve vs Muy Leve</p>
+          <div class="h-72"><canvas id="chartSaboresIntensidad"></canvas></div>
         </div>
       </div>
       <div>
-        <h3 class="text-sm font-bold text-slate-800 mb-2">Diagnóstico Operativo Sugerido</h3>
+        <h3 class="text-sm font-bold text-slate-800 mb-2">Registro de Lotes con Alerta Sensorial (Atípicos)</h3>
         <div class="overflow-x-auto border rounded-lg border-slate-200">
           <table class="w-full text-left border-collapse text-xs">
             <thead class="bg-slate-100 text-slate-600 uppercase">
-              <tr>
-                <th class="p-2.5">Lote / Archivo</th>
-                <th class="p-2.5">Camaronera (Piscina)</th>
-                <th class="p-2.5 text-right">T (°C)</th>
-                <th class="p-2.5 text-right">Unid. Reales</th>
-                <th class="p-2.5 text-right">% Sano</th>
-                <th class="p-2.5 text-right">% Def. Cabeza</th>
-                <th class="p-2.5 text-right">% Def. Cola</th>
-                <th class="p-2.5 text-right">% Def. Cuerpo</th>
-                <th class="p-2.5">Diagnóstico Sugerido</th>
-              </tr>
+              <tr><th class="p-2">Lote</th><th class="p-2">Camaronera</th><th class="p-2">Fracción Evaluada</th><th class="p-2">Sabor Identificado</th><th class="p-2">Intensidad</th><th class="p-2 text-right">Unid. Detectadas</th></tr>
             </thead>
-            <tbody id="tbodyDiagnostico" class="divide-y divide-slate-200"></tbody>
+            <tbody id="tbodySabores" class="divide-y divide-slate-200"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- PESTAÑA 2 -->
-    <div id="tab2" class="bg-white p-5 rounded-b-xl shadow-sm border border-slate-200 space-y-6 hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <h3 class="text-sm font-bold text-slate-800 mb-1">Diagrama de Pareto de Defectos (Regla 80/20)</h3>
-          <div class="h-80"><canvas id="chartPareto"></canvas></div>
-        </div>
-        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 overflow-y-auto max-h-96">
-          <h3 class="text-sm font-bold text-slate-800 mb-2">Desglose de Defectos Activos</h3>
-          <table class="w-full text-xs text-left">
-            <thead class="bg-slate-100 border-b border-slate-300 text-slate-500 sticky top-0">
-              <tr>
-                <th class="p-1.5">Defecto</th>
-                <th class="p-1.5">Zona</th>
-                <th class="p-1.5 text-right">Unid</th>
-                <th class="p-1.5 text-right">% Relativo</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyParetoList" class="divide-y divide-slate-200"></tbody>
-          </table>
-        </div>
+    <!-- TAB 5: EXPLORADOR -->
+    <div id="tab5" class="bg-white p-5 rounded-b-xl shadow-sm border hidden space-y-4">
+      <div class="flex gap-2">
+        <button onclick="exportCSV(currentDefectRecords, 'Defectos_Fisicos_Normalizados.csv')" class="bg-blue-600 text-white text-xs px-3 py-2 rounded font-bold">⬇️ Exportar Físicos (CSV)</button>
+        <button onclick="exportCSV(currentFlavorRecords, 'Analisis_Sensorial_Normalizado.csv')" class="bg-purple-600 text-white text-xs px-3 py-2 rounded font-bold">⬇️ Exportar Sabores (CSV)</button>
       </div>
     </div>
 
-    <!-- PESTAÑA 3 -->
-    <div id="tab3" class="bg-white p-5 rounded-b-xl shadow-sm border border-slate-200 space-y-6 hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <h3 class="text-sm font-bold text-slate-800 mb-1">Homogeneidad inter-muestras (% Fresco y Sano)</h3>
-          <div class="h-72"><canvas id="chartMuestras"></canvas></div>
-        </div>
-        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <h3 class="text-sm font-bold text-slate-800 mb-1">Control de Temperatura vs Deterioro Flácido</h3>
-          <div class="h-72"><canvas id="chartTemp"></canvas></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- PESTAÑA 4 -->
-    <div id="tab4" class="bg-white p-5 rounded-b-xl shadow-sm border border-slate-200 space-y-4 hidden">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-bold text-slate-800">Explorador y Exportación de Base Normalizada</h3>
-        <button onclick="exportNormalizedCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition">⬇️ Exportar CSV Vertical</button>
-      </div>
-      <div class="overflow-x-auto max-h-96 border border-slate-200 rounded-lg">
-        <table class="w-full text-left border-collapse text-xs">
-          <thead class="bg-slate-100 text-slate-600 uppercase sticky top-0">
-            <tr>
-              <th class="p-2.5">Lote</th>
-              <th class="p-2.5">Camaronera (Piscina)</th>
-              <th class="p-2.5">Muestra</th>
-              <th class="p-2.5">Parámetro</th>
-              <th class="p-2.5 text-right">Unidades</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyExplorer" class="divide-y divide-slate-200"></tbody>
-        </table>
-      </div>
-    </div>
   </main>
 
   <script>
@@ -258,378 +162,205 @@
       "Camarón semirosado": "Todo el Cuerpo (General)",
       "Otros": "Todo el Cuerpo (General)"
     };
+    const ZONE_COLORS = { "Fresco y Sano": "#16a34a", "Cabeza (Cefalotórax)": "#ea580c", "Cola (Abdomen)": "#0d9488", "Todo el Cuerpo (General)": "#2563eb" };
+    
+    let rawLots = [], currentDefectRecords = [], currentFlavorRecords = [], charts = {};
 
-    const ZONE_COLORS = {
-      "Fresco y Sano": "#16a34a",
-      "Cabeza (Cefalotórax)": "#ea580c",
-      "Cola (Abdomen)": "#0d9488",
-      "Todo el Cuerpo (General)": "#2563eb"
-    };
-
-    let rawLotsData = [];
-    let currentNormalizedRecords = [];
-    let charts = {};
-
-    // 1. CARGA AUTOMÁTICA DESDE GITHUB (fetch archivo CSV local)
     window.onload = async () => {
       try {
         const response = await fetch('./Consolidado_Organoleptico.csv');
-        if (!response.ok) throw new Error("No se encontró el archivo en la ruta esperada.");
-        const csvText = await response.text();
-        
-        Papa.parse(csvText, {
-          header: true,
-          dynamicTyping: true,
-          skipEmptyLines: true,
-          complete: function(results) {
-            processRawData(results.data);
-            document.getElementById('statusCarga').textContent = "✅ Base Sincronizada Automáticamente";
-            document.getElementById('statusCarga').classList.replace('text-slate-400', 'text-emerald-400');
-            document.getElementById('mainContent').style.display = "block";
-          },
-          error: function() { throw new Error("Error procesando el formato del CSV."); }
-        });
+        if (!response.ok) throw new Error("No file");
+        Papa.parse(await response.text(), { header: true, dynamicTyping: true, skipEmptyLines: true, complete: res => initData(res.data) });
       } catch (error) {
-        console.warn(error);
-        document.getElementById('statusCarga').textContent = "⚠️ Esperando carga manual del archivo CSV...";
-        document.getElementById('statusCarga').classList.replace('text-slate-400', 'text-yellow-400');
+        document.getElementById('statusCarga').textContent = "⚠️ Esperando CSV manual...";
       }
     };
 
-    // 2. PROCESAMIENTO A PRUEBA DE CEROS Y VACÍOS
-    function processRawData(rows) {
-      rawLotsData = rows.map(r => {
-        const samples = { 1: {}, 2: {}, 3: {} };
-        Object.keys(ANATOMIA_MAP).forEach(param => {
-          [1, 2, 3].forEach(m => {
-            const uKey = `${param} - ${m}° Muestra - Unid`;
-            const pKey = `${param} - ${m}° Muestra - %`;
-            // Uso estricto de fallback para atrapar vacíos "", nulos y ceros
-            const unid = Number(r[uKey]) || 0; 
-            const pct = Number(r[pKey]) || 0;
-            // Solo graba en el diccionario si es mayor a cero, evitando basura
-            if (unid > 0 || pct > 0) {
-              samples[m][param] = [unid, pct];
-            }
-          });
-        });
-        return {
-          Archivo: String(r['Archivo'] || ''),
+    function handleManualUpload(e) {
+      if(!e.target.files[0]) return;
+      const reader = new FileReader();
+      reader.onload = evt => Papa.parse(evt.target.result, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: res => initData(res.data) });
+      reader.readAsText(e.target.files[0]);
+    }
+
+    function initData(rows) {
+      rawLots = rows.map(r => {
+        const lot = {
           Lote: String(r['Lote'] || ''),
+          Tipo: String(r['Tipo'] || ''),
           Fecha: String(r['Fecha'] || ''),
-          Hora: String(r['Hora Llegada'] || ''),
           Camaronera: String(r['Camaronera'] || ''),
           Piscina: String(r['Piscina'] || ''),
           Temperatura: Number(r['Temperatura']) || 0,
-          samples
+          defectos: { 1:{}, 2:{}, 3:{}, 4:{}, 5:{}, 6:{} },
+          sabores: []
         };
-      }).filter(r => r.Lote !== ''); // Ignorar filas completamente vacías
-      
-      populateSelects();
-      applyFilters();
-      document.getElementById('mainContent').style.display = "block";
-    }
-
-    function buildNormalizedRecords(lotsArray) {
-      const records = [];
-      lotsArray.forEach((lot, idx) => {
-        [1, 2, 3].forEach(m => {
-          const sampleObj = lot.samples[m] || {};
-          let sampleTotalUnid = 0;
-          Object.keys(ANATOMIA_MAP).forEach(param => {
-            if (sampleObj[param]) sampleTotalUnid += sampleObj[param][0];
-          });
-
-          Object.keys(ANATOMIA_MAP).forEach(param => {
-            if (sampleObj[param] && sampleObj[param][0] > 0) {
-              const unid = sampleObj[param][0];
-              records.push({
-                rowId: idx, Archivo: lot.Archivo, Lote: lot.Lote,
-                Fecha: lot.Fecha, Hora: lot.Hora,
-                Camaronera: lot.Camaronera, Piscina: lot.Piscina,
-                Temperatura: lot.Temperatura, Muestra: String(m),
-                Parametro: param, EsDefecto: param !== "Camarón Fresco y Sano",
-                Zona: ANATOMIA_MAP[param], Unidades: unid,
-                PctReal: sampleTotalUnid > 0 ? (unid / sampleTotalUnid) * 100 : 0
-              });
-            }
+        
+        // Extraer Defectos Físicos (6 muestras)
+        Object.keys(ANATOMIA_MAP).forEach(param => {
+          [1,2,3,4,5,6].forEach(m => {
+            const unid = Number(r[`${param} - ${m}° Muestra - Unid`]) || 0;
+            if(unid > 0) lot.defectos[m][param] = unid;
           });
         });
-      });
-      return records;
-    }
 
-    function getActiveLots(dedup) {
-      if (!dedup) return rawLotsData;
-      const seen = new Set();
-      return rawLotsData.filter(item => {
-        const key = `${item.Lote}_${item.Fecha}_${item.Piscina}`;
-        if (seen.has(key)) return false;
-        seen.add(key); return true;
-      });
+        // Extraer Análisis Sensorial dinámicamente (Cualquier columna que termine en " - Unid" y NO sea físico)
+        Object.keys(r).forEach(key => {
+          if(key.endsWith(' - Unid') && !key.includes('Muestra')) {
+            const saborFull = key.replace(' - Unid', '').trim();
+            const unid = Number(r[key]) || 0;
+            if(unid > 0) {
+              const upper = saborFull.toUpperCase();
+              const esCola = upper.includes('COLA');
+              const esCaract = upper.includes('CARACTERISTICO');
+              
+              let intensidad = "N/A";
+              if(upper.includes('MUY LEVE')) intensidad = "MUY LEVE";
+              else if(upper.includes('LEVE')) intensidad = "LEVE";
+              else if(upper.includes('FUERTE')) intensidad = "FUERTE";
+              
+              let categoria = "Característico";
+              if(!esCaract) {
+                if(upper.includes('TIERRA')) categoria = "Tierra";
+                else if(upper.includes('MANGLE')) categoria = "Mangle";
+                else if(upper.includes('CHOCLO')) categoria = "Choclo";
+                else categoria = "Otros";
+              }
+
+              lot.sabores.push({ SaborOriginal: saborFull, Categoria: categoria, Intensidad: intensidad, Fraccion: esCola ? "Cola" : "Entero", Unidades: unid, EsAtipico: !esCaract });
+            }
+          }
+        });
+        return lot;
+      }).filter(r => r.Lote !== '');
+      
+      document.getElementById('statusCarga').textContent = "✅ Base 314 Cols Cargada";
+      document.getElementById('statusCarga').classList.replace('text-slate-400', 'text-emerald-400');
+      document.getElementById('mainContent').style.display = "block";
+      populateSelects();
+      applyFilters();
     }
 
     function populateSelects() {
-      const lots = getActiveLots(document.getElementById('chkDeduplicar').checked);
-      updateSelectOptions('fCamaronera', new Set(lots.map(l => l.Camaronera)), 'Todas');
-      updateSelectOptions('fLote', new Set(lots.map(l => l.Lote)), 'Todos');
-      updateSelectOptions('fFecha', new Set(lots.map(l => l.Fecha)), 'Todas');
+      const lots = document.getElementById('chkDeduplicar').checked ? deduplicate(rawLots) : rawLots;
+      updateSel('fCamaronera', new Set(lots.map(l => l.Camaronera)), 'Todas');
+      updateSel('fLote', new Set(lots.map(l => l.Lote)), 'Todos');
+      updateSel('fTipo', new Set(lots.map(l => l.Tipo)), 'Entero y Cola');
+      updateSel('fFecha', new Set(lots.map(l => l.Fecha)), 'Todas');
     }
-
-    function updateSelectOptions(id, valSet, defaultLabel) {
-      const sel = document.getElementById(id);
-      const curr = sel.value;
-      sel.innerHTML = `<option value="ALL">${defaultLabel}</option>`;
-      Array.from(valSet).forEach(v => { sel.innerHTML += `<option value="${v}">${v}</option>`; });
-      if (Array.from(valSet).includes(curr)) sel.value = curr;
+    function updateSel(id, set, def) {
+      const el = document.getElementById(id); const val = el.value;
+      el.innerHTML = `<option value="ALL">${def}</option>` + Array.from(set).map(v => `<option value="${v}">${v}</option>`).join('');
+      if(Array.from(set).includes(val)) el.value = val;
+    }
+    function deduplicate(arr) {
+      const seen = new Set();
+      return arr.filter(item => { const k = `${item.Lote}_${item.Fecha}`; if(seen.has(k)) return false; seen.add(k); return true; });
     }
 
     function applyFilters() {
-      if (rawLotsData.length === 0) return;
-      const dedup = document.getElementById('chkDeduplicar').checked;
+      let activeLots = document.getElementById('chkDeduplicar').checked ? deduplicate(rawLots) : rawLots;
       const fCam = document.getElementById('fCamaronera').value;
-      const fLote = document.getElementById('fLote').value;
-      const fZona = document.getElementById('fZona').value;
-      const fMuestra = document.getElementById('fMuestra').value;
-      const fFecha = document.getElementById('fFecha').value;
+      const fLot = document.getElementById('fLote').value;
+      const fTip = document.getElementById('fTipo').value;
+      const fFec = document.getElementById('fFecha').value;
+      const fMue = document.getElementById('fMuestra').value;
 
-      const activeLots = getActiveLots(dedup).filter(l => {
-        if (fCam !== 'ALL' && l.Camaronera !== fCam) return false;
-        if (fLote !== 'ALL' && l.Lote !== fLote) return false;
-        if (fFecha !== 'ALL' && l.Fecha !== fFecha) return false;
-        return true;
+      activeLots = activeLots.filter(l => (fCam==='ALL' || l.Camaronera===fCam) && (fLot==='ALL' || l.Lote===fLot) && (fTip==='ALL' || l.Tipo===fTip) && (fFec==='ALL' || l.Fecha===fFec));
+
+      // Build Normalized Fact Tables
+      currentDefectRecords = [];
+      currentFlavorRecords = [];
+      
+      activeLots.forEach(lot => {
+        // Physical
+        [1,2,3,4,5,6].forEach(m => {
+          if(fMue !== 'ALL' && String(m) !== fMue) return;
+          Object.entries(lot.defectos[m]).forEach(([param, unid]) => {
+            currentDefectRecords.push({ Lote: lot.Lote, Camaronera: lot.Camaronera, Temperatura: lot.Temperatura, Muestra: m, Parametro: param, Zona: ANATOMIA_MAP[param], Unidades: unid, EsDefecto: param !== "Camarón Fresco y Sano" });
+          });
+        });
+        // Flavors (Muestra filter doesn't apply to sensory which is per lot)
+        lot.sabores.forEach(s => {
+          currentFlavorRecords.push({ Lote: lot.Lote, Camaronera: lot.Camaronera, TipoProd: lot.Tipo, ...s });
+        });
       });
 
-      const allRecords = buildNormalizedRecords(activeLots).filter(r => {
-        if (fMuestra !== 'ALL' && r.Muestra !== fMuestra) return false;
-        return true;
-      });
-
-      currentNormalizedRecords = allRecords.filter(r => {
-        if (fZona !== 'ALL' && r.Zona !== fZona) return false;
-        return true;
-      });
-
-      updateKPIs(allRecords, activeLots);
-      updateTab1(allRecords, activeLots);
-      updateTab2(currentNormalizedRecords);
-      updateTab3(allRecords, activeLots);
-      renderExplorerTable();
+      renderDashboard(activeLots);
     }
 
-    function updateKPIs(records, lots) {
-      const tot = records.reduce((a, b) => a + b.Unidades, 0);
-      const sumZ = z => records.filter(r => r.Zona === z).reduce((a, b) => a + b.Unidades, 0);
-      const pct = v => tot > 0 ? ((v / tot) * 100).toFixed(1) + '%' : '0.0%';
-
-      document.getElementById('kpiTotalUnid').textContent = tot;
-      document.getElementById('kpiTotalLotes').textContent = `en ${lots.length} lote(s)`;
-      document.getElementById('kpiPctSano').textContent = pct(records.filter(r => !r.EsDefecto).reduce((a, b) => a + b.Unidades, 0));
+    function renderDashboard(lots) {
+      // 1. KPIs
+      const totDefUnid = currentDefectRecords.reduce((a,b)=>a+b.Unidades, 0);
+      const sumZ = z => currentDefectRecords.filter(r=>r.Zona===z).reduce((a,b)=>a+b.Unidades, 0);
+      const pct = v => totDefUnid > 0 ? ((v/totDefUnid)*100).toFixed(1)+'%' : '0%';
+      
+      document.getElementById('kpiLotes').textContent = lots.length;
+      document.getElementById('kpiUnid').textContent = totDefUnid + " unid. físicas";
+      document.getElementById('kpiPctSano').textContent = pct(currentDefectRecords.filter(r=>!r.EsDefecto).reduce((a,b)=>a+b.Unidades,0));
       document.getElementById('kpiPctCabeza').textContent = pct(sumZ("Cabeza (Cefalotórax)"));
       document.getElementById('kpiPctCola').textContent = pct(sumZ("Cola (Abdomen)"));
-      document.getElementById('kpiPctCuerpo').textContent = pct(sumZ("Todo el Cuerpo (General)"));
-
-      if (lots.length > 0) {
-        const maxTemp = Math.max(...lots.map(l => l.Temperatura)).toFixed(1);
-        document.getElementById('kpiTempAlert').textContent = `Máx: ${maxTemp} °C`;
-        document.getElementById('kpiTempAlert').className = maxTemp > 4 ? "text-xs font-bold text-red-600 mt-1" : "text-xs font-semibold text-green-600 mt-1";
-      }
-    }
-
-    function updateTab1(records, lots) {
-      const labels = lots.map(l => `Lote ${l.Lote}`);
-      const zones = ["Fresco y Sano", "Todo el Cuerpo (General)", "Cabeza (Cefalotórax)", "Cola (Abdomen)"];
       
-      const datasets = zones.map(z => ({
-        label: z, backgroundColor: ZONE_COLORS[z],
-        data: lots.map(l => {
-          const lotRecs = records.filter(r => r.Lote === l.Lote);
-          const tot = lotRecs.reduce((a, b) => a + b.Unidades, 0);
-          const zTot = lotRecs.filter(r => r.Zona === z).reduce((a, b) => a + b.Unidades, 0);
-          return tot > 0 ? Number(((zTot / tot) * 100).toFixed(1)) : 0;
-        })
-      }));
+      const maxT = lots.length ? Math.max(...lots.map(l=>l.Temperatura)).toFixed(1) : 0;
+      document.getElementById('kpiTemp').textContent = maxT + " °C";
+      document.getElementById('kpiTempAlert').textContent = maxT > 4 ? "⚠️ Excede cadena frío" : "✅ Frío OK";
+      document.getElementById('kpiTempAlert').className = maxT > 4 ? "text-[10px] font-bold mt-1 text-red-600" : "text-[10px] font-bold mt-1 text-green-600";
 
-      if (charts.loteStack) charts.loteStack.destroy();
+      // KPI Sabores
+      const lotesConAtipico = new Set(currentFlavorRecords.filter(r => r.EsAtipico).map(r => r.Lote)).size;
+      document.getElementById('kpiSabores').textContent = lots.length ? ((lotesConAtipico / lots.length)*100).toFixed(1)+'%' : '0%';
+
+      // 2. Charts Tab 1 (Físico)
+      const lblLotes = lots.map(l=>l.Lote);
+      const zns = ["Fresco y Sano", "Todo el Cuerpo (General)", "Cabeza (Cefalotórax)", "Cola (Abdomen)"];
+      if(charts.loteStack) charts.loteStack.destroy();
       charts.loteStack = new Chart(document.getElementById('chartLoteStack'), {
-        type: 'bar', data: { labels, datasets },
-        options: { scales: { x: { stacked: true }, y: { stacked: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+        type:'bar', data: { labels: lblLotes, datasets: zns.map(z => ({ label:z, backgroundColor:ZONE_COLORS[z], data: lots.map(l => {
+          const lRecs = currentDefectRecords.filter(r=>r.Lote===l.Lote); const tot=lRecs.reduce((a,b)=>a+b.Unidades,0);
+          return tot>0 ? (lRecs.filter(r=>r.Zona===z).reduce((a,b)=>a+b.Unidades,0)/tot*100).toFixed(1) : 0;
+        })}))}, options: { scales:{x:{stacked:true},y:{stacked:true,max:100}}, maintainAspectRatio:false }
       });
 
-      const defZones = ["Todo el Cuerpo (General)", "Cabeza (Cefalotórax)", "Cola (Abdomen)"];
-      const donaData = defZones.map(z => records.filter(r => r.Zona === z).reduce((a, b) => a + b.Unidades, 0));
-      if (charts.zonaDona) charts.zonaDona.destroy();
-      charts.zonaDona = new Chart(document.getElementById('chartZonaDona'), {
-        type: 'doughnut',
-        data: { labels: defZones, datasets: [{ data: donaData, backgroundColor: defZones.map(z => ZONE_COLORS[z]) }] },
-        options: { plugins: { legend: { position: 'bottom' } }, maintainAspectRatio: false }
+      // 3. Tab 4: SABORES (NUEVO)
+      const atipicos = currentFlavorRecords.filter(r => r.EsAtipico);
+      const catCounts = { Tierra:0, Mangle:0, Choclo:0, Otros:0 };
+      const intCounts = { FUERTE:0, LEVE:0, "MUY LEVE":0 };
+      atipicos.forEach(r => { 
+        if(catCounts[r.Categoria] !== undefined) catCounts[r.Categoria] += r.Unidades;
+        if(intCounts[r.Intensidad] !== undefined) intCounts[r.Intensidad] += r.Unidades;
       });
 
-      const tbody = document.getElementById('tbodyDiagnostico');
-      tbody.innerHTML = '';
-      lots.forEach(l => {
-        const lr = records.filter(r => r.Lote === l.Lote);
-        const tot = lr.reduce((a, b) => a + b.Unidades, 0);
-        if(tot === 0) return; // Evita mostrar lotes vacíos/nulos
-        const pSano = (lr.filter(r => !r.EsDefecto).reduce((a, b) => a + b.Unidades, 0) / tot * 100).toFixed(1);
-        const pCab = (lr.filter(r => r.Zona === "Cabeza (Cefalotórax)").reduce((a, b) => a + b.Unidades, 0) / tot * 100).toFixed(1);
-        
-        let diag = l.Temperatura > 4.0 ? "⚠️ Temp. Crítica" : (pCab > 20 ? "✂️ Apto Cola" : "✅ Apto Entero");
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-2 text-slate-500 font-bold">${l.Lote}<br><span class="text-[10px] font-normal">${l.Archivo}</span></td>
-            <td class="p-2">${l.Camaronera}</td>
-            <td class="p-2 text-right ${l.Temperatura > 4 ? 'text-red-600 font-bold' : ''}">${l.Temperatura}</td>
-            <td class="p-2 text-right font-semibold">${tot}</td>
-            <td class="p-2 text-right text-green-700 font-bold">${pSano}%</td>
-            <td class="p-2 text-right text-orange-700">${pCab}%</td>
-            <td class="p-2 text-right text-teal-700">${(lr.filter(r => r.Zona === "Cola (Abdomen)").reduce((a, b) => a + b.Unidades, 0)/tot*100).toFixed(1)}%</td>
-            <td class="p-2 text-right text-blue-700">${(lr.filter(r => r.Zona === "Todo el Cuerpo (General)").reduce((a, b) => a + b.Unidades, 0)/tot*100).toFixed(1)}%</td>
-            <td class="p-2 font-bold text-xs">${diag}</td>
-          </tr>
-        `;
+      if(charts.sCat) charts.sCat.destroy();
+      charts.sCat = new Chart(document.getElementById('chartSaboresBar'), {
+        type:'bar', data: { labels: Object.keys(catCounts), datasets: [{ label:'Unidades Atípicas', data: Object.values(catCounts), backgroundColor: '#9333ea' }] },
+        options: { maintainAspectRatio:false }
+      });
+
+      if(charts.sInt) charts.sInt.destroy();
+      charts.sInt = new Chart(document.getElementById('chartSaboresIntensidad'), {
+        type:'doughnut', data: { labels: Object.keys(intCounts), datasets: [{ data: Object.values(intCounts), backgroundColor: ['#dc2626','#f59e0b','#fcd34d'] }] },
+        options: { maintainAspectRatio:false }
+      });
+
+      // Table Sabores
+      const tbS = document.getElementById('tbodySabores'); tbS.innerHTML = '';
+      atipicos.sort((a,b)=>b.Unidades - a.Unidades).forEach(r => {
+        const bg = r.Intensidad==='FUERTE' ? 'badge-sabor-fuerte' : 'badge-sabor-leve';
+        tbS.innerHTML += `<tr class="hover:bg-purple-50"><td class="p-2 font-bold">${r.Lote}</td><td class="p-2">${r.Camaronera}</td><td class="p-2">${r.Fraccion}</td><td class="p-2 font-semibold text-purple-800">${r.Categoria}</td><td class="p-2"><span class="${bg} text-[10px] px-2 py-0.5 rounded font-bold">${r.Intensidad}</span></td><td class="p-2 text-right font-bold">${r.Unidades}</td></tr>`;
       });
     }
 
-    function updateTab2(records) {
-      const defRecs = records.filter(r => r.EsDefecto);
-      const grouped = {};
-      defRecs.forEach(r => {
-        if (!grouped[r.Parametro]) grouped[r.Parametro] = { unid: 0, zona: r.Zona };
-        grouped[r.Parametro].unid += r.Unidades;
-      });
-
-      const sorted = Object.entries(grouped).map(([p, o]) => ({ p, u: o.unid, z: o.zona })).sort((a, b) => b.u - a.u);
-      const totalDef = sorted.reduce((a, b) => a + b.u, 0);
-
-      let cum = 0;
-      const cumPct = sorted.map(s => { cum += s.u; return totalDef > 0 ? Number(((cum/totalDef)*100).toFixed(1)) : 0; });
-
-      if (charts.pareto) charts.pareto.destroy();
-      charts.pareto = new Chart(document.getElementById('chartPareto'), {
-        data: {
-          labels: sorted.map(s => s.p),
-          datasets: [
-            { type: 'line', label: '% Acumulado', data: cumPct, borderColor: '#dc2626', yAxisID: 'y1' },
-            { type: 'bar', label: 'Unidades', data: sorted.map(s => s.u), backgroundColor: sorted.map(s => ZONE_COLORS[s.z]), yAxisID: 'y' }
-          ]
-        },
-        options: { scales: { y: { position: 'left' }, y1: { position: 'right', max: 105, grid: { drawOnChartArea: false } } }, maintainAspectRatio: false }
-      });
-
-      const tbody = document.getElementById('tbodyParetoList');
-      tbody.innerHTML = '';
-      sorted.forEach(s => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="p-1.5 font-medium">${s.p}</td>
-            <td class="p-1.5 text-xs text-slate-500">${s.z}</td>
-            <td class="p-1.5 text-right font-bold">${s.u}</td>
-            <td class="p-1.5 text-right">${((s.u/totalDef)*100).toFixed(1)}%</td>
-          </tr>
-        `;
-      });
+    function exportCSV(records, filename) {
+      if(!records.length) return;
+      const headers = Object.keys(records[0]).join(',');
+      const rows = records.map(r => Object.values(r).map(v => `"${v}"`).join(',')).join('\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(["\uFEFF" + headers + '\n' + rows], {type: 'text/csv;charset=utf-8;'}));
+      a.download = filename; a.click();
     }
-
-    function updateTab3(records, lots) {
-      const labels = lots.map(l => l.Lote);
-      const datasetsM = ['1', '2', '3'].map((m, i) => {
-        const colors = ['#3b82f6', '#f59e0b', '#10b981'];
-        return {
-          label: `${m}° Muestra`, backgroundColor: colors[i],
-          data: lots.map(l => {
-            const mRecs = records.filter(r => r.Lote === l.Lote && r.Muestra === m);
-            const tot = mRecs.reduce((a, b) => a + b.Unidades, 0);
-            // Uso de 'null' si es 0, para que ChartJS lo ignore visualmente y no dibuje un falso 0%
-            if(tot === 0) return null; 
-            const sano = mRecs.filter(r => !r.EsDefecto).reduce((a, b) => a + b.Unidades, 0);
-            return Number(((sano / tot) * 100).toFixed(1));
-          })
-        };
-      });
-
-      if (charts.muestras) charts.muestras.destroy();
-      charts.muestras = new Chart(document.getElementById('chartMuestras'), {
-        type: 'bar', data: { labels, datasets: datasetsM },
-        options: { scales: { y: { max: 100 } }, maintainAspectRatio: false }
-      });
-
-      if (charts.temp) charts.temp.destroy();
-      charts.temp = new Chart(document.getElementById('chartTemp'), {
-        data: {
-          labels,
-          datasets: [
-            { type: 'line', label: 'Temp °C', data: lots.map(l => l.Temperatura), borderColor: '#dc2626', yAxisID: 'y1' },
-            { type: 'bar', label: '% Flácido', data: lots.map(l => {
-                const lr = records.filter(r => r.Lote === l.Lote);
-                const tot = lr.reduce((a, b) => a + b.Unidades, 0);
-                return tot > 0 ? (lr.filter(r => r.Parametro === "Camarón Flácido").reduce((a, b) => a + b.Unidades, 0) / tot * 100).toFixed(1) : 0;
-              }), backgroundColor: '#60a5fa', yAxisID: 'y' }
-          ]
-        },
-        options: { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } }, maintainAspectRatio: false }
-      });
-    }
-
-    function renderExplorerTable() {
-      const tbody = document.getElementById('tbodyExplorer');
-      tbody.innerHTML = '';
-      currentNormalizedRecords.forEach(r => {
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 border-b">
-            <td class="p-2 font-bold">${r.Lote}</td>
-            <td class="p-2">${r.Camaronera}</td>
-            <td class="p-2">${r.Muestra}° Muestra</td>
-            <td class="p-2 font-medium">${r.Parametro}</td>
-            <td class="p-2 text-right font-bold text-blue-700">${r.Unidades}</td>
-          </tr>
-        `;
-      });
-    }
-
-    function exportNormalizedCSV() {
-      let csv = "Lote,Camaronera,Fecha,Temperatura,Muestra,Parametro,Zona,Unidades\n";
-      currentNormalizedRecords.forEach(r => {
-        csv += `${r.Lote},"${r.Camaronera}",${r.Fecha},${r.Temperatura},${r.Muestra},"${r.Parametro}","${r.Zona}",${r.Unidades}\n`;
-      });
-      const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "Datos_Normalizados.csv";
-      a.click();
-    }
-
-    function handleManualUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (ext === 'csv') {
-          Papa.parse(evt.target.result, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: res => processRawData(res.data) });
-        } else {
-          const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
-          processRawData(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: 0 }));
-        }
-        document.getElementById('statusCarga').textContent = "✅ Base Cargada Manualmente";
-        document.getElementById('statusCarga').classList.replace('text-yellow-400', 'text-emerald-400');
-      };
-      ext === 'csv' ? reader.readAsText(file) : reader.readAsArrayBuffer(file);
-    }
-
-    function resetFilters() {
-      ['fCamaronera', 'fLote', 'fZona', 'fMuestra', 'fFecha'].forEach(id => document.getElementById(id).value = 'ALL');
-      applyFilters();
-    }
-
-    function switchTab(id) {
-      ['tab1', 'tab2', 'tab3', 'tab4'].forEach(t => {
-        document.getElementById(t).classList.add('hidden');
-        document.getElementById('btn-' + t).classList.remove('tab-active', 'text-blue-600');
-      });
-      document.getElementById(id).classList.remove('hidden');
-      document.getElementById('btn-' + id).classList.add('tab-active', 'text-blue-600');
-    }
+    
+    function resetFilters() { ['fCamaronera','fLote','fTipo','fMuestra','fFecha'].forEach(id=>document.getElementById(id).value='ALL'); applyFilters(); }
+    function switchTab(id) { ['tab1','tab2','tab3','tab4','tab5'].forEach(t => { document.getElementById(t).classList.add('hidden'); document.getElementById('btn-'+t).classList.remove('tab-active','border-x','border-t'); }); document.getElementById(id).classList.remove('hidden'); document.getElementById('btn-'+id).classList.add('tab-active','border-x','border-t'); }
   </script>
 </body>
 </html>
