@@ -6,7 +6,6 @@
   <title>Dashboard Integral de Calidad - Recepción de Camarón</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- PapaParse para lectura automática desde GitHub Pages -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f1f5f9; }
@@ -28,9 +27,9 @@
       <div>
         <div class="flex items-center gap-2">
           <span class="bg-blue-600 text-xs font-bold uppercase px-2.5 py-1 rounded">QC Analyst</span>
-          <span class="text-slate-400 text-xs" id="statusCarga">Cargando base de 314 columnas...</span>
+          <span class="text-slate-400 text-xs" id="statusCarga">Sincronizando y normalizando CSV...</span>
         </div>
-        <h1 class="text-xl md:text-2xl font-bold mt-1">Control de Calidad: Físico y Análisis Sensorial</h1>
+        <h1 class="text-xl md:text-2xl font-bold mt-1">Control de Calidad: Físico, Sensorial y Correlaciones</h1>
       </div>
       
       <div class="flex flex-wrap items-center gap-3">
@@ -70,13 +69,14 @@
       <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500"><p class="text-[10px] text-slate-500 font-bold uppercase">Temp. Máxima</p><p id="kpiTemp" class="text-2xl font-extrabold text-slate-800 mt-1">0 °C</p><p id="kpiTempAlert" class="text-[10px] font-bold mt-1">...</p></div>
     </div>
 
-    <!-- TABS -->
+    <!-- TABS NAVEGACIÓN -->
     <div class="bg-white rounded-t-xl border border-b-0 border-slate-200 flex overflow-x-auto">
       <button onclick="switchTab('tab1')" id="btn-tab1" class="px-5 py-3 text-sm font-medium tab-active whitespace-nowrap">📊 1. Resumen Físico</button>
       <button onclick="switchTab('tab2')" id="btn-tab2" class="px-5 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">🦐 2. Pareto Anatómico</button>
       <button onclick="switchTab('tab3')" id="btn-tab3" class="px-5 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">🔬 3. Variabilidad (1° a 6°)</button>
-      <button onclick="switchTab('tab4')" id="btn-tab4" class="px-5 py-3 text-sm font-medium text-purple-700 bg-purple-50 hover:text-purple-900 whitespace-nowrap font-bold border-r">👅 4. Análisis Sensorial (Sabores)</button>
-      <button onclick="switchTab('tab5')" id="btn-tab5" class="px-5 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">📋 5. Datos Normalizados</button>
+      <button onclick="switchTab('tab4')" id="btn-tab4" class="px-5 py-3 text-sm font-medium text-purple-700 bg-purple-50 hover:text-purple-900 whitespace-nowrap font-bold border-r">👅 4. Análisis Sensorial</button>
+      <button onclick="switchTab('tab6')" id="btn-tab6" class="px-5 py-3 text-sm font-medium text-emerald-700 bg-emerald-50 hover:text-emerald-900 whitespace-nowrap font-bold border-r">📈 5. Correlaciones (Nuevo)</button>
+      <button onclick="switchTab('tab5')" id="btn-tab5" class="px-5 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">📋 6. Datos Crudos</button>
     </div>
 
     <!-- TAB 1: RESUMEN FÍSICO -->
@@ -102,34 +102,40 @@
       <div class="bg-slate-50 p-4 rounded-xl border mb-6"><h3 class="text-sm font-bold mb-2">% Fresco y Sano por Muestras (1° a 6°)</h3><div class="h-72"><canvas id="chartMuestras"></canvas></div></div>
     </div>
 
-    <!-- TAB 4: SENSORIAL Y SABORES (NUEVO) -->
+    <!-- TAB 4: SENSORIAL Y SABORES -->
     <div id="tab4" class="bg-white p-5 rounded-b-xl shadow-sm border border-purple-200 space-y-6 hidden">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-purple-50 p-4 rounded-xl border border-purple-200">
-          <h3 class="text-sm font-bold text-purple-900 mb-1">Impacto de Sabores Atípicos por Fracción</h3>
-          <p class="text-xs text-purple-700 mb-2">Distribución de unidades detectadas con Tierra, Mangle, Choclo u Otros</p>
-          <div class="h-72"><canvas id="chartSaboresBar"></canvas></div>
-        </div>
-        <div class="bg-purple-50 p-4 rounded-xl border border-purple-200">
-          <h3 class="text-sm font-bold text-purple-900 mb-1">Severidad del Atípico (Intensidad)</h3>
-          <p class="text-xs text-purple-700 mb-2">Unidades clasificadas como Fuerte vs Leve vs Muy Leve</p>
-          <div class="h-72"><canvas id="chartSaboresIntensidad"></canvas></div>
-        </div>
+        <div class="bg-purple-50 p-4 rounded-xl border border-purple-200"><h3 class="text-sm font-bold text-purple-900 mb-1">Impacto de Sabores Atípicos</h3><div class="h-72"><canvas id="chartSaboresBar"></canvas></div></div>
+        <div class="bg-purple-50 p-4 rounded-xl border border-purple-200"><h3 class="text-sm font-bold text-purple-900 mb-1">Severidad del Atípico (Intensidad)</h3><div class="h-72"><canvas id="chartSaboresIntensidad"></canvas></div></div>
       </div>
       <div>
         <h3 class="text-sm font-bold text-slate-800 mb-2">Registro de Lotes con Alerta Sensorial (Atípicos)</h3>
         <div class="overflow-x-auto border rounded-lg border-slate-200">
           <table class="w-full text-left border-collapse text-xs">
-            <thead class="bg-slate-100 text-slate-600 uppercase">
-              <tr><th class="p-2">Lote</th><th class="p-2">Camaronera</th><th class="p-2">Fracción Evaluada</th><th class="p-2">Sabor Identificado</th><th class="p-2">Intensidad</th><th class="p-2 text-right">Unid. Detectadas</th></tr>
-            </thead>
+            <thead class="bg-slate-100 text-slate-600 uppercase"><tr><th class="p-2">Lote</th><th class="p-2">Camaronera</th><th class="p-2">Fracción</th><th class="p-2">Sabor Identificado</th><th class="p-2">Intensidad</th><th class="p-2 text-right">Unid. Detectadas</th></tr></thead>
             <tbody id="tbodySabores" class="divide-y divide-slate-200"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- TAB 5: EXPLORADOR -->
+    <!-- TAB 6: CORRELACIONES (NUEVA PESTAÑA) -->
+    <div id="tab6" class="bg-white p-5 rounded-b-xl shadow-sm border border-emerald-200 space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+          <h3 class="text-sm font-bold text-emerald-900 mb-1">Correlación: Temperatura vs % Defectos</h3>
+          <p class="text-[10px] text-emerald-700 mb-2">¿A mayor temperatura de recepción hay mayor porcentaje de rechazo físico?</p>
+          <div class="h-72"><canvas id="chartCorrTempDef"></canvas></div>
+        </div>
+        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+          <h3 class="text-sm font-bold text-emerald-900 mb-1">Correlación: % Flácido vs Sabores Atípicos</h3>
+          <p class="text-[10px] text-emerald-700 mb-2">¿El camarón flácido tiende a desarrollar sabores a Tierra/Mangle/Choclo?</p>
+          <div class="h-72"><canvas id="chartCorrFlacSabor"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: EXPLORADOR Y EXPORTACIÓN -->
     <div id="tab5" class="bg-white p-5 rounded-b-xl shadow-sm border hidden space-y-4">
       <div class="flex gap-2">
         <button onclick="exportCSV(currentDefectRecords, 'Defectos_Fisicos_Normalizados.csv')" class="bg-blue-600 text-white text-xs px-3 py-2 rounded font-bold">⬇️ Exportar Físicos (CSV)</button>
@@ -162,6 +168,7 @@
       "Camarón semirosado": "Todo el Cuerpo (General)",
       "Otros": "Todo el Cuerpo (General)"
     };
+    
     const ZONE_COLORS = { "Fresco y Sano": "#16a34a", "Cabeza (Cefalotórax)": "#ea580c", "Cola (Abdomen)": "#0d9488", "Todo el Cuerpo (General)": "#2563eb" };
     
     let rawLots = [], currentDefectRecords = [], currentFlavorRecords = [], charts = {};
@@ -170,7 +177,12 @@
       try {
         const response = await fetch('./Consolidado_Organoleptico.csv');
         if (!response.ok) throw new Error("No file");
-        Papa.parse(await response.text(), { header: true, dynamicTyping: true, skipEmptyLines: true, complete: res => initData(res.data) });
+        Papa.parse(await response.text(), { 
+          header: true, 
+          delimiter: ";", // <--- CRUCIAL: Fuerza la lectura por punto y coma
+          skipEmptyLines: true, 
+          complete: res => initData(res.data) 
+        });
       } catch (error) {
         document.getElementById('statusCarga').textContent = "⚠️ Esperando CSV manual...";
       }
@@ -179,8 +191,15 @@
     function handleManualUpload(e) {
       if(!e.target.files[0]) return;
       const reader = new FileReader();
-      reader.onload = evt => Papa.parse(evt.target.result, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: res => initData(res.data) });
+      reader.onload = evt => Papa.parse(evt.target.result, { header: true, delimiter: ";", skipEmptyLines: true, complete: res => initData(res.data) });
       reader.readAsText(e.target.files[0]);
+    }
+
+    function toNumber(val) {
+      if (!val) return 0;
+      if (typeof val === 'number') return val;
+      // Reemplaza la coma decimal por punto y convierte a número
+      return Number(val.replace(',', '.')) || 0;
     }
 
     function initData(rows) {
@@ -191,24 +210,23 @@
           Fecha: String(r['Fecha'] || ''),
           Camaronera: String(r['Camaronera'] || ''),
           Piscina: String(r['Piscina'] || ''),
-          Temperatura: Number(r['Temperatura']) || 0,
+          Temperatura: toNumber(r['Temperatura']),
           defectos: { 1:{}, 2:{}, 3:{}, 4:{}, 5:{}, 6:{} },
           sabores: []
         };
         
-        // Extraer Defectos Físicos (6 muestras)
         Object.keys(ANATOMIA_MAP).forEach(param => {
           [1,2,3,4,5,6].forEach(m => {
-            const unid = Number(r[`${param} - ${m}° Muestra - Unid`]) || 0;
+            const colName = `${param} - ${m}° Muestra - Unid`;
+            const unid = toNumber(r[colName]);
             if(unid > 0) lot.defectos[m][param] = unid;
           });
         });
 
-        // Extraer Análisis Sensorial dinámicamente (Cualquier columna que termine en " - Unid" y NO sea físico)
         Object.keys(r).forEach(key => {
           if(key.endsWith(' - Unid') && !key.includes('Muestra')) {
             const saborFull = key.replace(' - Unid', '').trim();
-            const unid = Number(r[key]) || 0;
+            const unid = toNumber(r[key]);
             if(unid > 0) {
               const upper = saborFull.toUpperCase();
               const esCola = upper.includes('COLA');
@@ -226,7 +244,6 @@
                 else if(upper.includes('CHOCLO')) categoria = "Choclo";
                 else categoria = "Otros";
               }
-
               lot.sabores.push({ SaborOriginal: saborFull, Categoria: categoria, Intensidad: intensidad, Fraccion: esCola ? "Cola" : "Entero", Unidades: unid, EsAtipico: !esCaract });
             }
           }
@@ -248,11 +265,13 @@
       updateSel('fTipo', new Set(lots.map(l => l.Tipo)), 'Entero y Cola');
       updateSel('fFecha', new Set(lots.map(l => l.Fecha)), 'Todas');
     }
+    
     function updateSel(id, set, def) {
       const el = document.getElementById(id); const val = el.value;
       el.innerHTML = `<option value="ALL">${def}</option>` + Array.from(set).map(v => `<option value="${v}">${v}</option>`).join('');
       if(Array.from(set).includes(val)) el.value = val;
     }
+    
     function deduplicate(arr) {
       const seen = new Set();
       return arr.filter(item => { const k = `${item.Lote}_${item.Fecha}`; if(seen.has(k)) return false; seen.add(k); return true; });
@@ -268,19 +287,16 @@
 
       activeLots = activeLots.filter(l => (fCam==='ALL' || l.Camaronera===fCam) && (fLot==='ALL' || l.Lote===fLot) && (fTip==='ALL' || l.Tipo===fTip) && (fFec==='ALL' || l.Fecha===fFec));
 
-      // Build Normalized Fact Tables
       currentDefectRecords = [];
       currentFlavorRecords = [];
       
       activeLots.forEach(lot => {
-        // Physical
         [1,2,3,4,5,6].forEach(m => {
           if(fMue !== 'ALL' && String(m) !== fMue) return;
           Object.entries(lot.defectos[m]).forEach(([param, unid]) => {
             currentDefectRecords.push({ Lote: lot.Lote, Camaronera: lot.Camaronera, Temperatura: lot.Temperatura, Muestra: m, Parametro: param, Zona: ANATOMIA_MAP[param], Unidades: unid, EsDefecto: param !== "Camarón Fresco y Sano" });
           });
         });
-        // Flavors (Muestra filter doesn't apply to sensory which is per lot)
         lot.sabores.forEach(s => {
           currentFlavorRecords.push({ Lote: lot.Lote, Camaronera: lot.Camaronera, TipoProd: lot.Tipo, ...s });
         });
@@ -306,11 +322,10 @@
       document.getElementById('kpiTempAlert').textContent = maxT > 4 ? "⚠️ Excede cadena frío" : "✅ Frío OK";
       document.getElementById('kpiTempAlert').className = maxT > 4 ? "text-[10px] font-bold mt-1 text-red-600" : "text-[10px] font-bold mt-1 text-green-600";
 
-      // KPI Sabores
       const lotesConAtipico = new Set(currentFlavorRecords.filter(r => r.EsAtipico).map(r => r.Lote)).size;
       document.getElementById('kpiSabores').textContent = lots.length ? ((lotesConAtipico / lots.length)*100).toFixed(1)+'%' : '0%';
 
-      // 2. Charts Tab 1 (Físico)
+      // 2. Tab 1: Físico Stacked
       const lblLotes = lots.map(l=>l.Lote);
       const zns = ["Fresco y Sano", "Todo el Cuerpo (General)", "Cabeza (Cefalotórax)", "Cola (Abdomen)"];
       if(charts.loteStack) charts.loteStack.destroy();
@@ -321,7 +336,55 @@
         })}))}, options: { scales:{x:{stacked:true},y:{stacked:true,max:100}}, maintainAspectRatio:false }
       });
 
-      // 3. Tab 4: SABORES (NUEVO)
+      // Dona
+      const defZones = ["Todo el Cuerpo (General)", "Cabeza (Cefalotórax)", "Cola (Abdomen)"];
+      if(charts.dona) charts.dona.destroy();
+      charts.dona = new Chart(document.getElementById('chartZonaDona'), {
+        type:'doughnut', data: { labels: defZones, datasets: [{ data: defZones.map(z => sumZ(z)), backgroundColor: defZones.map(z=>ZONE_COLORS[z]) }] },
+        options: { maintainAspectRatio:false }
+      });
+
+      // 3. Tab 2: Pareto
+      const defRecs = currentDefectRecords.filter(r=>r.EsDefecto);
+      const grouped = {};
+      defRecs.forEach(r => { if(!grouped[r.Parametro]) grouped[r.Parametro] = { u:0, z:r.Zona }; grouped[r.Parametro].u += r.Unidades; });
+      const sorted = Object.entries(grouped).map(([p,o]) => ({ p, u:o.u, z:o.z })).sort((a,b) => b.u - a.u);
+      
+      const totPar = sorted.reduce((a,b)=>a+b.u, 0);
+      let cum = 0;
+      const cumPct = sorted.map(s => { cum+=s.u; return totPar>0 ? (cum/totPar)*100 : 0; });
+
+      if(charts.pareto) charts.pareto.destroy();
+      charts.pareto = new Chart(document.getElementById('chartPareto'), {
+        data: { labels: sorted.map(s=>s.p), datasets: [
+          { type:'line', label:'% Acumulado', data:cumPct, borderColor:'#dc2626', yAxisID:'y1' },
+          { type:'bar', label:'Unidades', data:sorted.map(s=>s.u), backgroundColor:sorted.map(s=>ZONE_COLORS[s.z]), yAxisID:'y' }
+        ]},
+        options: { scales: { y1:{position:'right', max:105, grid:{drawOnChartArea:false}} }, maintainAspectRatio:false }
+      });
+
+      const tbP = document.getElementById('tbodyParetoList'); tbP.innerHTML = '';
+      sorted.forEach(s => tbP.innerHTML += `<tr><td class="p-1.5">${s.p}</td><td class="p-1.5 text-right font-bold">${s.u}</td></tr>`);
+
+      // 4. Tab 3: Muestras 1 a 6
+      const dsM = [1,2,3,4,5,6].map((m, i) => {
+        const colors = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4'];
+        return {
+          label: `${m}° Muestra`, backgroundColor: colors[i],
+          data: lots.map(l => {
+            const mRecs = currentDefectRecords.filter(r=>r.Lote===l.Lote && r.Muestra===m);
+            const t = mRecs.reduce((a,b)=>a+b.Unidades, 0);
+            return t>0 ? (mRecs.filter(r=>!r.EsDefecto).reduce((a,b)=>a+b.Unidades,0)/t*100).toFixed(1) : null; // null evita columnas vacías en cero
+          })
+        };
+      });
+      if(charts.muestras) charts.muestras.destroy();
+      charts.muestras = new Chart(document.getElementById('chartMuestras'), {
+        type:'bar', data: { labels: lblLotes, datasets: dsM },
+        options: { scales: { y: { max:100 } }, maintainAspectRatio:false }
+      });
+
+      // 5. Tab 4: Sabores
       const atipicos = currentFlavorRecords.filter(r => r.EsAtipico);
       const catCounts = { Tierra:0, Mangle:0, Choclo:0, Otros:0 };
       const intCounts = { FUERTE:0, LEVE:0, "MUY LEVE":0 };
@@ -332,7 +395,7 @@
 
       if(charts.sCat) charts.sCat.destroy();
       charts.sCat = new Chart(document.getElementById('chartSaboresBar'), {
-        type:'bar', data: { labels: Object.keys(catCounts), datasets: [{ label:'Unidades Atípicas', data: Object.values(catCounts), backgroundColor: '#9333ea' }] },
+        type:'bar', data: { labels: Object.keys(catCounts), datasets: [{ label:'Unidades', data: Object.values(catCounts), backgroundColor: '#9333ea' }] },
         options: { maintainAspectRatio:false }
       });
 
@@ -342,11 +405,54 @@
         options: { maintainAspectRatio:false }
       });
 
-      // Table Sabores
       const tbS = document.getElementById('tbodySabores'); tbS.innerHTML = '';
       atipicos.sort((a,b)=>b.Unidades - a.Unidades).forEach(r => {
         const bg = r.Intensidad==='FUERTE' ? 'badge-sabor-fuerte' : 'badge-sabor-leve';
         tbS.innerHTML += `<tr class="hover:bg-purple-50"><td class="p-2 font-bold">${r.Lote}</td><td class="p-2">${r.Camaronera}</td><td class="p-2">${r.Fraccion}</td><td class="p-2 font-semibold text-purple-800">${r.Categoria}</td><td class="p-2"><span class="${bg} text-[10px] px-2 py-0.5 rounded font-bold">${r.Intensidad}</span></td><td class="p-2 text-right font-bold">${r.Unidades}</td></tr>`;
+      });
+
+      // 6. Tab 6: Correlaciones (NUEVO)
+      const corrData = lots.map(l => {
+        const lRecs = currentDefectRecords.filter(r=>r.Lote===l.Lote);
+        const tot = lRecs.reduce((a,b)=>a+b.Unidades, 0);
+        const defPct = tot>0 ? (lRecs.filter(r=>r.EsDefecto).reduce((a,b)=>a+b.Unidades,0)/tot*100) : 0;
+        const flacPct = tot>0 ? (lRecs.filter(r=>r.Parametro==='Camarón Flácido').reduce((a,b)=>a+b.Unidades,0)/tot*100) : 0;
+        const sabs = currentFlavorRecords.filter(r=>r.Lote===l.Lote && r.EsAtipico).reduce((a,b)=>a+b.Unidades, 0);
+        return { t: l.Temperatura, dp: defPct, fp: flacPct, su: sabs, lote: l.Lote };
+      }).filter(d => d.t > 0); // Omitir si la temperatura no está registrada
+
+      if(charts.corr1) charts.corr1.destroy();
+      charts.corr1 = new Chart(document.getElementById('chartCorrTempDef'), {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'Lotes',
+            data: corrData.map(d => ({ x: d.t, y: d.dp, lote: d.lote })),
+            backgroundColor: '#059669', borderColor: '#047857'
+          }]
+        },
+        options: {
+          plugins: { tooltip: { callbacks: { label: (ctx) => `Lote ${ctx.raw.lote}: Temp ${ctx.raw.x}°C, Defectos ${ctx.raw.y.toFixed(1)}%` } } },
+          scales: { x: { title: { display: true, text: 'Temperatura (°C)' } }, y: { title: { display: true, text: '% Defectos Físicos' } } },
+          maintainAspectRatio: false
+        }
+      });
+
+      if(charts.corr2) charts.corr2.destroy();
+      charts.corr2 = new Chart(document.getElementById('chartCorrFlacSabor'), {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'Lotes',
+            data: corrData.map(d => ({ x: d.fp, y: d.su, lote: d.lote })),
+            backgroundColor: '#0ea5e9', borderColor: '#0284c7'
+          }]
+        },
+        options: {
+          plugins: { tooltip: { callbacks: { label: (ctx) => `Lote ${ctx.raw.lote}: Flácido ${ctx.raw.x.toFixed(1)}%, Sabores Atípicos ${ctx.raw.y} Unid` } } },
+          scales: { x: { title: { display: true, text: '% Camarón Flácido' } }, y: { title: { display: true, text: 'Unidades con Sabores Atípicos' } } },
+          maintainAspectRatio: false
+        }
       });
     }
 
@@ -360,7 +466,15 @@
     }
     
     function resetFilters() { ['fCamaronera','fLote','fTipo','fMuestra','fFecha'].forEach(id=>document.getElementById(id).value='ALL'); applyFilters(); }
-    function switchTab(id) { ['tab1','tab2','tab3','tab4','tab5'].forEach(t => { document.getElementById(t).classList.add('hidden'); document.getElementById('btn-'+t).classList.remove('tab-active','border-x','border-t'); }); document.getElementById(id).classList.remove('hidden'); document.getElementById('btn-'+id).classList.add('tab-active','border-x','border-t'); }
+    
+    function switchTab(id) { 
+      ['tab1','tab2','tab3','tab4','tab5','tab6'].forEach(t => { 
+        document.getElementById(t).classList.add('hidden'); 
+        document.getElementById('btn-'+t).classList.remove('tab-active','border-x','border-t'); 
+      }); 
+      document.getElementById(id).classList.remove('hidden'); 
+      document.getElementById('btn-'+id).classList.add('tab-active','border-x','border-t'); 
+    }
   </script>
 </body>
 </html>
